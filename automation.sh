@@ -46,10 +46,32 @@ fi
 #Create archive of apache log
 cd /var/log/apache2/
 
-filename=$username"-httpd-logs-"$(date '+%d%m%Y-%H%M%S')
+date_time=$(date '+%d%m%Y-%H%M%S')
+filename=$username"-httpd-logs-"$date_time
 
 tar -cf ${filename}.tar *.log
 
 #copy archive to s3 bucket
 aws s3 cp ${filename}.tar s3://${s3_bucket}/${filename}.tar
+
+# Iventory hosting check
+inv_file="/var/www/html/inventory.html"
+
+if ! [ -f $inv_file ]
+then
+        touch $inv_file
+        echo "<h><b>Log Type &ensp;&ensp;  Date Created  &ensp;&ensp; Type &ensp;&ensp; Size" > $inv_file
+fi
+
+# Write data to inventory.html
+size=$(ls -lh | grep "$filename" | awk '{print $5}')
+echo "<p>httpd-logs &ensp;&ensp; $date_time &ensp;&ensp; tar &ensp;&ensp; $size</p>" >> $inv_file
+
+# Check cron schedule for auto script execution
+cron_file="/etc/cron.d/automation"
+if ! [ -f $cron_file ]
+then
+        touch $cron_file
+        echo "0 0 * * * root /root/Automation_Project/automation.sh" >> $cron_file
+fi
 
